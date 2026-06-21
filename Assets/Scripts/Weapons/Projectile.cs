@@ -8,14 +8,18 @@ public class Projectile : MonoBehaviour
     public float lifetime = 2f;
     public GameObject explosionPrefab;
 
-    int direction = 1;
+    Vector2 velocity = Vector2.right;
     GameObject owner;
 
     public void Launch(int facingDirection, int projectileDamage, float projectileSpeed, float projectileLifetime, GameObject projectileOwner)
     {
-        direction = facingDirection >= 0 ? 1 : -1;
+        Launch(Vector2.right * (facingDirection >= 0 ? 1f : -1f), projectileDamage, projectileSpeed, projectileLifetime, projectileOwner);
+    }
+
+    public void Launch(Vector2 direction, int projectileDamage, float projectileSpeed, float projectileLifetime, GameObject projectileOwner)
+    {
+        velocity = direction.normalized * projectileSpeed;
         damage = projectileDamage;
-        speed = projectileSpeed;
         lifetime = projectileLifetime;
         owner = projectileOwner;
         Destroy(gameObject, lifetime);
@@ -23,7 +27,7 @@ public class Projectile : MonoBehaviour
 
     void Update()
     {
-        transform.Translate(Vector3.right * direction * speed * Time.deltaTime, Space.World);
+        transform.Translate(velocity * Time.deltaTime, Space.World);
     }
 
     void OnTriggerEnter2D(Collider2D other)

@@ -270,6 +270,7 @@ MonoBehaviour:
   coyoteTime: 0.12
   jumpBufferTime: 0.12
   crouchSpeedMultiplier: 0.45
+  maxAirJumps: 1
   groundCheck: {fileID: 4599483393582119400}
   groundMask:
     serializedVersion: 2
@@ -317,6 +318,11 @@ MonoBehaviour:
   firePoint: {fileID: 4911185490797617722}
   pulseBlaster: {fileID: 11400000, guid: a32b3ce4cb6ab4b49b666319338cf8b2, type: 2}
   sparkRocket: {fileID: 11400000, guid: 4c834e9a2f117234e91008a94b3aef90, type: 2}
+  weapons:
+  - {fileID: 11400000, guid: a32b3ce4cb6ab4b49b666319338cf8b2, type: 2}
+  - {fileID: 11400000, guid: f53699c855b744242a105a8aacb56027, type: 2}
+  - {fileID: 11400000, guid: 91e2373a9ab8bde478157f57372cc62d, type: 2}
+  - {fileID: 11400000, guid: 4c834e9a2f117234e91008a94b3aef90, type: 2}
   rocketAmmo: 0
   sparkRocketUnlocked: 0
 --- !u!82 &1770506268432512352

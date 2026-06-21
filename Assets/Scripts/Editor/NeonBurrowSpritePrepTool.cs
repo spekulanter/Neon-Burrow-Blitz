@@ -271,11 +271,11 @@ public static class NeonBurrowSpritePrepTool
     {
         var clips = new Dictionary<string, AnimationClip>
         {
-            ["Idle"] = CreateClip(prefix, "Idle", 1, 1f, true, spriteFolder, animationFolder),
-            ["Run"] = CreateClip(prefix, "Run", 8, 14f, true, spriteFolder, animationFolder),
-            ["Jump"] = CreateClip(prefix, "Jump", 1, 1f, false, spriteFolder, animationFolder),
-            ["Crouch"] = CreateClip(prefix, "Crouch", 4, 8f, false, spriteFolder, animationFolder),
-            ["Shoot"] = CreateClip(prefix, "Shoot", 4, 14f, false, spriteFolder, animationFolder)
+            ["Idle"] = CreateClip(prefix, "Idle", 1, 1f, true, spriteFolder, animationFolder, "Idle"),
+            ["Run"] = CreateFilteredClip(prefix, "Run", 8, 12f, true, spriteFolder, animationFolder),
+            ["Jump"] = CreateClip(prefix, "Jump", 1, 1f, false, spriteFolder, animationFolder, "Idle"),
+            ["Crouch"] = CreateClip(prefix, "Crouch", 1, 1f, false, spriteFolder, animationFolder, "Idle"),
+            ["Shoot"] = CreateClip(prefix, "Shoot", 1, 1f, false, spriteFolder, animationFolder, "Idle")
         };
 
         AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
@@ -318,16 +318,40 @@ public static class NeonBurrowSpritePrepTool
         AddExitTransition(shoot, idle);
     }
 
-    static AnimationClip CreateClip(string prefix, string anim, int count, float fps, bool loop, string spriteFolder, string animationFolder)
+    static AnimationClip CreateClip(string prefix, string anim, int count, float fps, bool loop, string spriteFolder, string animationFolder, string sourceAnim = null)
+    {
+        sourceAnim ??= anim;
+        var spritePaths = new List<string>();
+        for (int i = 0; i < count; i++)
+            spritePaths.Add($"{spriteFolder}/{prefix}_{sourceAnim}_{i:00}.png");
+        return CreateClipFromSprites(prefix, anim, spritePaths, fps, loop, animationFolder);
+    }
+
+    static AnimationClip CreateFilteredClip(string prefix, string anim, int count, float fps, bool loop, string spriteFolder, string animationFolder)
+    {
+        var spritePaths = new List<string>();
+        for (int i = 0; i < count; i++)
+        {
+            string path = $"{spriteFolder}/{prefix}_{anim}_{i:00}.png";
+            if (IsUsablePlayerFrame(path))
+                spritePaths.Add(path);
+        }
+
+        if (spritePaths.Count == 0)
+            spritePaths.Add($"{spriteFolder}/{prefix}_Idle_00.png");
+        return CreateClipFromSprites(prefix, anim, spritePaths, fps, loop, animationFolder);
+    }
+
+    static AnimationClip CreateClipFromSprites(string prefix, string anim, List<string> spritePaths, float fps, bool loop, string animationFolder)
     {
         var clip = new AnimationClip { frameRate = fps };
-        var frames = new ObjectReferenceKeyframe[count];
-        for (int i = 0; i < count; i++)
+        var frames = new ObjectReferenceKeyframe[spritePaths.Count];
+        for (int i = 0; i < spritePaths.Count; i++)
         {
             frames[i] = new ObjectReferenceKeyframe
             {
                 time = i / fps,
-                value = AssetDatabase.LoadAssetAtPath<Sprite>($"{spriteFolder}/{prefix}_{anim}_{i:00}.png")
+                value = AssetDatabase.LoadAssetAtPath<Sprite>(spritePaths[i])
             };
         }
 
@@ -347,20 +371,65 @@ public static class NeonBurrowSpritePrepTool
         return clip;
     }
 
+    static bool IsUsablePlayerFrame(string assetPath)
+    {
+        Texture2D texture = LoadTexture(assetPath);
+        if (texture == null)
+            return false;
+
+        Color32[] pixels = texture.GetPixels32();
+        int minX = texture.width;
+        int minY = texture.height;
+        int maxX = -1;
+        int maxY = -1;
+        int opaque = 0;
+        for (int y = 0; y < texture.height; y++)
+        {
+            for (int x = 0; x < texture.width; x++)
+            {
+                if (pixels[y * texture.width + x].a <= 10)
+                    continue;
+                opaque++;
+                minX = Mathf.Min(minX, x);
+                minY = Mathf.Min(minY, y);
+                maxX = Mathf.Max(maxX, x);
+                maxY = Mathf.Max(maxY, y);
+            }
+        }
+
+        int width = maxX - minX + 1;
+        int height = maxY - minY + 1;
+        return opaque >= 5000 && width >= 90 && height >= 120;
+    }
+
     public static void BuildPrefabsAndScenes()
     {
         CreateLayersAndSortingLayers();
-        var pulse = CreateWeaponData("Pulse_Blaster", false, 1, 0.18f, 18f);
-        var rocket = CreateWeaponData("Spark_Rocket", true, 3, 0.6f, 13f);
-        var pulsePrefab = CreateProjectilePrefab("Projectile_Pulse", new Color(0.1f, 0.9f, 1f), 0.22f);
-        var rocketPrefab = CreateProjectilePrefab("Projectile_Rocket", new Color(0.5f, 1f, 0.1f), 0.35f);
+        var pulse = CreateWeaponData("Pulse Blaster", false, 1, 0.18f, 18f, 1, 0f);
+        var splitter = CreateWeaponData("Crystal Splitter", false, 1, 0.34f, 15f, 3, 18f);
+        var lance = CreateWeaponData("Plasma Lance", false, 2, 0.42f, 26f, 1, 0f);
+        var rocket = CreateWeaponData("Spark Rocket", true, 3, 0.6f, 13f, 1, 0f);
+        var pulsePrefab = CreateProjectilePrefab("Projectile_Pulse", new Color(0.1f, 0.9f, 1f), 0.28f, 0.18f);
+        var splitterPrefab = CreateProjectilePrefab("Projectile_CrystalSplitter", new Color(0.95f, 0.25f, 1f), 0.22f, 0.15f);
+        var lancePrefab = CreateProjectilePrefab("Projectile_PlasmaLance", new Color(0.1f, 1f, 0.45f), 0.42f, 0.25f);
+        var rocketPrefab = CreateProjectilePrefab("Projectile_Rocket", new Color(1f, 0.55f, 0.05f), 0.46f, 0.28f);
+        var muzzle = CreateMuzzleFlashPrefab();
         pulse.projectilePrefab = pulsePrefab;
+        splitter.projectilePrefab = splitterPrefab;
+        lance.projectilePrefab = lancePrefab;
         rocket.projectilePrefab = rocketPrefab;
+        pulse.muzzleFlashPrefab = muzzle;
+        splitter.muzzleFlashPrefab = muzzle;
+        lance.muzzleFlashPrefab = muzzle;
+        rocket.muzzleFlashPrefab = muzzle;
         EditorUtility.SetDirty(pulse);
+        EditorUtility.SetDirty(splitter);
+        EditorUtility.SetDirty(lance);
         EditorUtility.SetDirty(rocket);
 
-        var rix = CreatePlayerPrefab("Player_Rix", PlayerSlot.Player1, "Rix", "Assets/AnimatorControllers/Rix.controller", pulse, rocket);
-        var nova = CreatePlayerPrefab("Player_Nova", PlayerSlot.Player2, "Nova", "Assets/AnimatorControllers/Nova.controller", pulse, rocket);
+        var weaponList = new[] { pulse, splitter, lance, rocket };
+        var rix = CreatePlayerPrefab("Player_Rix", PlayerSlot.Player1, "Rix", "Assets/AnimatorControllers/Rix.controller", pulse, rocket, weaponList);
+        var nova = CreatePlayerPrefab("Player_Nova", PlayerSlot.Player2, "Nova", "Assets/AnimatorControllers/Nova.controller", pulse, rocket, weaponList);
         CreateItemPrefabs();
         CreateEnemyPrefabs();
         CreateBackgroundPrefab();
@@ -374,30 +443,42 @@ public static class NeonBurrowSpritePrepTool
         EditorSceneManager.OpenScene("Assets/Scenes/MainMenu.unity", OpenSceneMode.Single);
     }
 
-    static WeaponData CreateWeaponData(string name, bool usesAmmo, int damage, float fireRate, float speed)
+    static WeaponData CreateWeaponData(string name, bool usesAmmo, int damage, float fireRate, float speed, int projectileCount, float spreadAngle)
     {
-        string path = $"Assets/Prefabs/Weapons/{name}.asset";
+        string path = $"Assets/Prefabs/Weapons/{name.Replace(' ', '_')}.asset";
         AssetDatabase.DeleteAsset(path);
         var data = ScriptableObject.CreateInstance<WeaponData>();
-        data.weaponName = name.Replace('_', ' ');
+        data.weaponName = name;
         data.usesAmmo = usesAmmo;
         data.damage = damage;
         data.fireRate = fireRate;
         data.projectileSpeed = speed;
         data.projectileLifetime = usesAmmo ? 3f : 2f;
+        data.projectileCount = projectileCount;
+        data.spreadAngle = spreadAngle;
         AssetDatabase.CreateAsset(data, path);
         return data;
     }
 
-    static GameObject CreateProjectilePrefab(string name, Color color, float size)
+    static GameObject CreateProjectilePrefab(string name, Color color, float size, float trailWidth)
     {
         var go = new GameObject(name);
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = CreateSolidSprite(name + "_Sprite", color);
         sr.sortingLayerName = "Projectiles";
+        sr.sortingOrder = 40;
         go.transform.localScale = Vector3.one * size;
         var col = go.AddComponent<CircleCollider2D>();
         col.isTrigger = true;
+        var trail = go.AddComponent<TrailRenderer>();
+        trail.time = 0.18f;
+        trail.startWidth = trailWidth;
+        trail.endWidth = 0f;
+        trail.material = GetGeneratedMaterial(name + "_Trail_Material", color);
+        trail.startColor = color;
+        trail.endColor = new Color(color.r, color.g, color.b, 0f);
+        trail.sortingLayerName = "Projectiles";
+        trail.sortingOrder = 39;
         go.AddComponent<Projectile>();
         string path = $"Assets/Prefabs/Weapons/{name}.prefab";
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
@@ -405,7 +486,21 @@ public static class NeonBurrowSpritePrepTool
         return prefab;
     }
 
-    static GameObject CreatePlayerPrefab(string name, PlayerSlot slot, string prefix, string controllerPath, WeaponData pulse, WeaponData rocket)
+    static GameObject CreateMuzzleFlashPrefab()
+    {
+        var go = new GameObject("MuzzleFlash");
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateSolidSprite("MuzzleFlash_Sprite", new Color(0.25f, 1f, 0.85f, 0.9f));
+        sr.sortingLayerName = "Projectiles";
+        sr.sortingOrder = 45;
+        go.transform.localScale = new Vector3(0.55f, 0.32f, 1f);
+        var effect = go.AddComponent<ExplosionEffect>();
+        effect.lifetime = 0.12f;
+        effect.growSpeed = 4f;
+        return SavePrefab(go, "Assets/Prefabs/Weapons/MuzzleFlash.prefab");
+    }
+
+    static GameObject CreatePlayerPrefab(string name, PlayerSlot slot, string prefix, string controllerPath, WeaponData pulse, WeaponData rocket, WeaponData[] weaponList)
     {
         var go = new GameObject(name);
         go.layer = LayerMask.NameToLayer("Player");
@@ -430,6 +525,7 @@ public static class NeonBurrowSpritePrepTool
         var weapon = go.AddComponent<WeaponController>();
         weapon.pulseBlaster = pulse;
         weapon.sparkRocket = rocket;
+        weapon.weapons = weaponList;
         go.AddComponent<AudioSource>();
 
         var ground = new GameObject("GroundCheck").transform;
@@ -507,9 +603,11 @@ public static class NeonBurrowSpritePrepTool
     {
         var beetle = new GameObject("BeetleBot");
         beetle.layer = LayerMask.NameToLayer("Enemy");
+        beetle.transform.localScale = new Vector3(1.5f, 0.9f, 1f);
         var sr = beetle.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateSolidSprite("BeetleBot_Sprite", new Color(0.1f, 0.9f, 0.75f));
+        sr.sprite = CreateSolidSprite("BeetleBot_Sprite", new Color(1f, 0.85f, 0.05f));
         sr.sortingLayerName = "Enemies";
+        sr.sortingOrder = 20;
         var rb = beetle.AddComponent<Rigidbody2D>();
         rb.gravityScale = 3f;
         rb.freezeRotation = true;
@@ -529,9 +627,11 @@ public static class NeonBurrowSpritePrepTool
 
         var turret = new GameObject("SporeTurret");
         turret.layer = LayerMask.NameToLayer("Enemy");
+        turret.transform.localScale = new Vector3(1.25f, 1.6f, 1f);
         var tsr = turret.AddComponent<SpriteRenderer>();
-        tsr.sprite = CreateSolidSprite("SporeTurret_Sprite", new Color(0.8f, 0.15f, 1f));
+        tsr.sprite = CreateSolidSprite("SporeTurret_Sprite", new Color(1f, 0.15f, 0.65f));
         tsr.sortingLayerName = "Enemies";
+        tsr.sortingOrder = 20;
         turret.AddComponent<BoxCollider2D>();
         var eh = turret.AddComponent<EnemyHealth>();
         eh.maxHealth = 3;
@@ -633,14 +733,16 @@ public static class NeonBurrowSpritePrepTool
 
     static void BuildPlatforms()
     {
-        CreatePlatform("Ground_Start", new Vector2(28f, 1f), new Vector3(14f, 1f, 0f));
-        CreatePlatform("Ground_1", new Vector2(28f, 1f), new Vector3(41f, 1f, 0f));
+        CreatePlatform("Left_Extension", new Vector2(24f, 1f), new Vector3(-12f, 1f, 0f));
+        CreatePlatform("Left_Wall", new Vector2(1f, 12f), new Vector3(-24.5f, 6f, 0f));
+        CreatePlatform("Ground_Start", new Vector2(32f, 1f), new Vector3(16f, 1f, 0f));
+        CreatePlatform("Ground_1", new Vector2(30f, 1f), new Vector3(47f, 1f, 0f));
         CreatePlatform("Ground_2", new Vector2(30f, 1f), new Vector3(68f, 1f, 0f));
         CreatePlatform("Ground_3", new Vector2(30f, 1f), new Vector3(97f, 1f, 0f));
         CreatePlatform("Ground_4", new Vector2(32f, 1f), new Vector3(126f, 1f, 0f));
         CreatePlatform("Ground_5", new Vector2(34f, 1f), new Vector3(158f, 1f, 0f));
         CreatePlatform("Ground_End", new Vector2(34f, 1f), new Vector3(190f, 1f, 0f));
-        CreatePlatform("Safety_Floor", new Vector2(210f, 0.8f), new Vector3(105f, -3f, 0f));
+        CreatePlatform("Safety_Floor", new Vector2(240f, 0.8f), new Vector3(96f, -3f, 0f));
         CreatePlatform("Platform_A", new Vector2(7f, 0.6f), new Vector3(32f, 5f, 0f));
         CreatePlatform("Platform_B", new Vector2(8f, 0.6f), new Vector3(52f, 8f, 0f));
         CreatePlatform("Platform_C", new Vector2(7f, 0.6f), new Vector3(72f, 6f, 0f));
@@ -655,8 +757,9 @@ public static class NeonBurrowSpritePrepTool
         go.layer = LayerMask.NameToLayer("Ground");
         go.transform.position = position;
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateSolidSprite(name + "_Sprite", new Color(0.08f, 0.16f, 0.25f));
+        sr.sprite = CreateSolidSprite(name + "_Sprite", new Color(0.08f, 0.22f, 0.28f));
         sr.sortingLayerName = "Ground";
+        sr.sortingOrder = 2;
         go.transform.localScale = new Vector3(size.x, size.y, 1f);
         var collider = go.AddComponent<BoxCollider2D>();
         collider.size = Vector2.one;
@@ -822,26 +925,31 @@ public static class NeonBurrowSpritePrepTool
     static Sprite CreateSolidSprite(string name, Color color)
     {
         string path = $"Assets/Art/Processed/{name}.png";
-        bool shouldWrite = true;
-        if (File.Exists(ProjectPath(path)))
+        var tex = new Texture2D(100, 100, TextureFormat.RGBA32, false);
+        Color[] pixels = new Color[100 * 100];
+        for (int i = 0; i < pixels.Length; i++)
+            pixels[i] = color;
+        tex.SetPixels(pixels);
+        tex.Apply();
+        SaveTexture(tex, path);
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        ConfigureTextureImport(path, SpriteImportMode.Single);
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+    }
+
+    static Material GetGeneratedMaterial(string name, Color color)
+    {
+        string path = $"Assets/Materials/{name}.mat";
+        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
         {
-            var existing = LoadTexture(path);
-            shouldWrite = existing == null || existing.width < 100 || existing.height < 100;
+            material = new Material(Shader.Find("Sprites/Default"));
+            AssetDatabase.CreateAsset(material, path);
         }
 
-        if (shouldWrite)
-        {
-            var tex = new Texture2D(100, 100, TextureFormat.RGBA32, false);
-            Color[] pixels = new Color[100 * 100];
-            for (int i = 0; i < pixels.Length; i++)
-                pixels[i] = color;
-            tex.SetPixels(pixels);
-            tex.Apply();
-            SaveTexture(tex, path);
-            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
-            ConfigureTextureImport(path, SpriteImportMode.Single);
-        }
-        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        material.color = color;
+        EditorUtility.SetDirty(material);
+        return material;
     }
 
     static void CreateLayersAndSortingLayers()

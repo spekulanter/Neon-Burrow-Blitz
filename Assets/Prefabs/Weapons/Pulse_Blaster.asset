@@ -18,4 +18,7 @@ MonoBehaviour:
   projectileSpeed: 18
   projectileLifetime: 2
   projectilePrefab: {fileID: 5448182732490016763, guid: 0373ab7587ec8ef4db15bc7f40ba96bf, type: 3}
+  muzzleFlashPrefab: {fileID: 8470876589696984067, guid: 631f844dfe8e7c245b6ad2db8d4a7fa9, type: 3}
   usesAmmo: 0
+  projectileCount: 1
+  spreadAngle: 0

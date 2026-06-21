@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c69519859b96bb44add5f1ad7374adc, type: 3}
+  m_Name: Crystal_Splitter
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponName: Crystal Splitter
+  damage: 1
+  fireRate: 0.34
+  projectileSpeed: 15
+  projectileLifetime: 2
+  projectilePrefab: {fileID: 7670705817517074271, guid: 3379561d29007cd4c8a616b75ddc4f9e, type: 3}
+  muzzleFlashPrefab: {fileID: 8470876589696984067, guid: 631f844dfe8e7c245b6ad2db8d4a7fa9, type: 3}
+  usesAmmo: 0
+  projectileCount: 3
+  spreadAngle: 18

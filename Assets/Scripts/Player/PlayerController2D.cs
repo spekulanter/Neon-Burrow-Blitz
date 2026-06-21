@@ -12,6 +12,7 @@ public class PlayerController2D : MonoBehaviour
     public float coyoteTime = 0.12f;
     public float jumpBufferTime = 0.12f;
     public float crouchSpeedMultiplier = 0.45f;
+    public int maxAirJumps = 1;
     public Transform groundCheck;
     public LayerMask groundMask;
 
@@ -25,6 +26,8 @@ public class PlayerController2D : MonoBehaviour
     Vector2 defaultColliderOffset;
     float coyoteCounter;
     float jumpBufferCounter;
+    int airJumpsRemaining;
+    bool wasGrounded;
 
     void Awake()
     {
@@ -40,6 +43,7 @@ public class PlayerController2D : MonoBehaviour
 
     void Update()
     {
+        EnforceReadableScale();
         UpdateGrounded();
 
         if (input.JumpPressed)
@@ -48,22 +52,35 @@ public class PlayerController2D : MonoBehaviour
             jumpBufferCounter -= Time.deltaTime;
 
         if (IsGrounded)
+        {
             coyoteCounter = coyoteTime;
+            if (!wasGrounded)
+                airJumpsRemaining = maxAirJumps;
+        }
         else
+        {
             coyoteCounter -= Time.deltaTime;
+        }
 
-        if (jumpBufferCounter > 0f && coyoteCounter > 0f && !input.CrouchHeld)
-            Jump();
+        if (jumpBufferCounter > 0f && !input.CrouchHeld)
+        {
+            if (coyoteCounter > 0f)
+                Jump(false);
+            else if (airJumpsRemaining > 0)
+                Jump(true);
+        }
 
         if (!input.JumpHeld && rb.linearVelocity.y > 0f)
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.55f);
 
         UpdateCrouchCollider();
         UpdateAnimator();
+        wasGrounded = IsGrounded;
     }
 
     void FixedUpdate()
     {
+        EnforceReadableScale();
         float move = input.Move;
         float targetSpeed = move * moveSpeed * (input.CrouchHeld ? crouchSpeedMultiplier : 1f);
         float rate = Mathf.Abs(targetSpeed) > 0.01f ? acceleration : deceleration;
@@ -74,8 +91,21 @@ public class PlayerController2D : MonoBehaviour
         {
             FacingDirection = move > 0f ? 1 : -1;
             var scale = transform.localScale;
-            scale.x = Mathf.Abs(scale.x) * FacingDirection;
+            scale.x = FacingDirection;
+            scale.y = 1f;
+            scale.z = 1f;
             transform.localScale = scale;
+        }
+    }
+
+    void EnforceReadableScale()
+    {
+        float x = FacingDirection >= 0 ? 1f : -1f;
+        if (Mathf.Abs(transform.localScale.x - x) > 0.001f ||
+            Mathf.Abs(transform.localScale.y - 1f) > 0.001f ||
+            Mathf.Abs(transform.localScale.z - 1f) > 0.001f)
+        {
+            transform.localScale = new Vector3(x, 1f, 1f);
         }
     }
 
@@ -85,18 +115,21 @@ public class PlayerController2D : MonoBehaviour
         rb.AddForce(force, ForceMode2D.Impulse);
     }
 
-    void Jump()
+    void Jump(bool airJump)
     {
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         jumpBufferCounter = 0f;
         coyoteCounter = 0f;
+        if (airJump)
+            airJumpsRemaining--;
     }
 
     void UpdateGrounded()
     {
         Vector2 origin = groundCheck != null ? (Vector2)groundCheck.position : (Vector2)transform.position + Vector2.down * 0.08f;
         IsGrounded = Physics2D.OverlapCircle(origin, 0.28f, groundMask) ||
-            Physics2D.Raycast(origin + Vector2.up * 0.08f, Vector2.down, 0.45f, groundMask);
+            Physics2D.Raycast(origin + Vector2.up * 0.08f, Vector2.down, 0.45f, groundMask) ||
+            (capsule != null && capsule.IsTouchingLayers(groundMask));
     }
 
     void UpdateCrouchCollider()
