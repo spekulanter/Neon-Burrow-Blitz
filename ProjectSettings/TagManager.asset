@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
+  serializedVersion: 3
   tags: []
   layers:
   - Default
@@ -13,11 +13,11 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - Ground
+  - Hazard
+  - Pickup
+  - Enemy
+  - Player
   - 
   - 
   - 
@@ -41,3 +41,26 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Background
+    uniqueID: 1021955740
+    locked: 0
+  - name: Ground
+    uniqueID: 249255636
+    locked: 0
+  - name: Pickups
+    uniqueID: 547850986
+    locked: 0
+  - name: Enemies
+    uniqueID: 1325795666
+    locked: 0
+  - name: Player
+    uniqueID: 1036572304
+    locked: 0
+  - name: Projectiles
+    uniqueID: 1765750051
+    locked: 0
+  - name: UI
+    uniqueID: 1975271601
+    locked: 0
+  m_RenderingLayers:
+  - Default
